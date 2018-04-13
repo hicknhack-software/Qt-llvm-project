@@ -36,7 +36,6 @@ endif()
 set(LLVM_TEST_DEPENDS
           BugpointPasses
           FileCheck
-          LLVMHello
           UnitTests
           bugpoint
           count
