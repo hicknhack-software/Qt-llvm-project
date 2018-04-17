@@ -47,6 +47,9 @@ target_link_libraries(clang
   clangFrontend
   clangFrontendTool
   clangSerialization
+  clangTidyPlugin
+  clangIncludeFixerPlugin
+  clazyPlugin
   )
 
 if(WIN32 AND NOT CYGWIN)

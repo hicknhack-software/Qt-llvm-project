@@ -512,3 +512,18 @@ int main(int argc_, const char **argv_) {
   // failing command.
   return Res;
 }
+
+// This anchor is used to force the linker to link the clang-tidy plugin.
+extern volatile int ClangTidyPluginAnchorSource;
+static int LLVM_ATTRIBUTE_UNUSED ClangTidyPluginAnchorDestination =
+    ClangTidyPluginAnchorSource;
+
+// This anchor is used to force the linker to link the clang-include-fixer
+// plugin.
+extern volatile int ClangIncludeFixerPluginAnchorSource;
+static int LLVM_ATTRIBUTE_UNUSED ClangIncludeFixerPluginAnchorDestination =
+    ClangIncludeFixerPluginAnchorSource;
+
+// This anchor is used to force the linker to link the clazy plugin.
+extern volatile int ClazyPluginAnchorSource;
+static int LLVM_ATTRIBUTE_UNUSED ClazyPluginAnchorDestination = ClazyPluginAnchorSource;
