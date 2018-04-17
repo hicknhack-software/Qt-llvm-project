@@ -8941,4 +8941,8 @@ static int LLVM_ATTRIBUTE_UNUSED ClangTidyPluginAnchorDestination =
 extern volatile int ClangIncludeFixerPluginAnchorSource;
 static int LLVM_ATTRIBUTE_UNUSED ClangIncludeFixerPluginAnchorDestination =
     ClangIncludeFixerPluginAnchorSource;
+
+// This anchor is used to force the linker to link the clazy plugin.
+extern volatile int ClazyPluginAnchorSource;
+static int LLVM_ATTRIBUTE_UNUSED ClazyPluginAnchorDestination = ClazyPluginAnchorSource;
 #endif
