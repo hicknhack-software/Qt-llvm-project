@@ -477,6 +477,14 @@ DiagnosticIDs::getDiagnosticSeverity(unsigned DiagID, SourceLocation Loc,
       Result = diag::Severity::Fatal;
   }
 
+  // If requested, ignore warnings from all headers.
+  if (Diag.SuppressNonErrorsFromIncludedFiles &&
+      Result <= diag::Severity::Warning && Loc.isValid() &&
+      !Diag.getSourceManager().isInMainFile(
+          Diag.getSourceManager().getExpansionLoc(Loc))) {
+    return diag::Severity::Ignored;
+  }
+
   // Custom diagnostics always are emitted in system headers.
   bool ShowInSystemHeader =
       !GetDiagInfo(DiagID) || GetDiagInfo(DiagID)->WarnShowInSystemHeader;

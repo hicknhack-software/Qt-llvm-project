@@ -216,6 +216,9 @@ private:
   // Suppress all diagnostics.
   bool SuppressAllDiagnostics = false;
 
+  // Suppress non-errors from all included files.
+  bool SuppressNonErrorsFromIncludedFiles = false;
+
   // Elide common types of templates.
   bool ElideType = true;
 
@@ -634,6 +637,10 @@ public:
     SuppressAllDiagnostics = Val;
   }
   bool getSuppressAllDiagnostics() const { return SuppressAllDiagnostics; }
+
+  void setSuppressNonErrorsFromIncludedFiles(bool Val = true) {
+    SuppressNonErrorsFromIncludedFiles = Val;
+  }
 
   /// Set type eliding, to skip outputting same types occurring in
   /// template types.

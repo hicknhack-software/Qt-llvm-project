@@ -3411,6 +3411,9 @@ clang_parseTranslationUnit_Impl(CXIndex CIdx, const char *source_filename,
   if (options & CXTranslationUnit_KeepGoing)
     Diags->setSuppressAfterFatalError(false);
 
+  if (options & CXTranslationUnit_IgnoreNonErrorsFromIncludedFiles)
+      Diags->setSuppressNonErrorsFromIncludedFiles(true);
+
   // Recover resources if we crash before exiting this function.
   llvm::CrashRecoveryContextCleanupRegistrar<DiagnosticsEngine,
     llvm::CrashRecoveryContextReleaseRefCleanup<DiagnosticsEngine> >
