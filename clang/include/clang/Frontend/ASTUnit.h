@@ -179,9 +179,6 @@ private:
   /// The name of the original source file used to generate this ASTUnit.
   std::string OriginalSourceFile;
 
-  /// The set of diagnostics produced when creating the preamble.
-  SmallVector<StandaloneDiagnostic, 4> PreambleDiagnostics;
-
   /// The set of diagnostics produced when creating this
   /// translation unit.
   SmallVector<StoredDiagnostic, 4> StoredDiagnostics;
@@ -197,28 +194,6 @@ private:
   /// the next.
   unsigned NumStoredDiagnosticsFromDriver = 0;
 
-  /// Counter that determines when we want to try building a
-  /// precompiled preamble.
-  ///
-  /// If zero, we will never build a precompiled preamble. Otherwise,
-  /// it's treated as a counter that decrements each time we reparse
-  /// without the benefit of a precompiled preamble. When it hits 1,
-  /// we'll attempt to rebuild the precompiled header. This way, if
-  /// building the precompiled preamble fails, we won't try again for
-  /// some number of calls.
-  unsigned PreambleRebuildCounter = 0;
-
-  /// Cache pairs "filename - source location"
-  ///
-  /// Cache contains only source locations from preamble so it is
-  /// guaranteed that they stay valid when the SourceManager is recreated.
-  /// This cache is used when loading preamble to increase performance
-  /// of that loading. It must be cleared when preamble is recreated.
-  llvm::StringMap<SourceLocation> PreambleSrcLocCache;
-
-  /// The contents of the preamble.
-  llvm::Optional<PrecompiledPreamble> Preamble;
-
   /// When non-NULL, this is the buffer used to store the contents of
   /// the main file when it has been padded for use with the precompiled
   /// preamble.
@@ -231,10 +206,6 @@ private:
   /// number of warnings matters, since we will not save the preamble
   /// when any errors are present.
   unsigned NumWarningsInPreamble = 0;
-
-  /// A list of the serialization ID numbers for each of the top-level
-  /// declarations parsed within the precompiled preamble.
-  std::vector<serialization::DeclID> TopLevelDeclsInPreamble;
 
   /// Whether we should be caching code-completion results.
   bool ShouldCacheCodeCompletionResults : 1;
@@ -296,6 +267,63 @@ public:
     unsigned Type;
   };
 
+  /// The cache to reuse the sharable data if there's more than 1 ASTUnit
+  /// for the same file.
+  class ASTUnitCache {
+    mutable unsigned RefCount = 0;
+
+  public:
+    ASTUnitCache() = default;
+    ASTUnitCache(const ASTUnitCache &) {}
+    void Retain() const { ++RefCount; }
+    void Release() const {
+      assert(RefCount > 0 && "Reference count is already zero.");
+      if (--RefCount == 0)
+        delete this;
+    }
+    unsigned getRefCount() const { return RefCount; }
+
+    /// The contents of the preamble.
+    llvm::Optional<PrecompiledPreamble> Preamble;
+
+    /// A list of the serialization ID numbers for each of the top-level
+    /// declarations parsed within the precompiled preamble.
+    std::vector<serialization::DeclID> TopLevelDeclsInPreamble;
+
+    /// The set of diagnostics produced when creating the preamble.
+    SmallVector<StandaloneDiagnostic, 4> PreambleDiagnostics;
+
+    /// Cache pairs "filename - source location"
+    ///
+    /// Cache contains only source locations from preamble so it is
+    /// guaranteed that they stay valid when the SourceManager is recreated.
+    /// This cache is used when loading preamble to increase performance
+    /// of that loading. It must be cleared when preamble is recreated.
+    llvm::StringMap<SourceLocation> PreambleSrcLocCache;
+
+    /// Counter that determines when we want to try building a
+    /// precompiled preamble.
+    ///
+    /// If zero, we will never build a precompiled preamble. Otherwise,
+    /// it's treated as a counter that decrements each time we reparse
+    /// without the benefit of a precompiled preamble. When it hits 1,
+    /// we'll attempt to rebuild the precompiled header. This way, if
+    /// building the precompiled preamble fails, we won't try again for
+    /// some number of calls.
+    unsigned PreambleRebuildCounter = 0;
+
+    /// A string hash of the top-level declaration and macro definition
+    /// names processed the last time that we reparsed the precompiled preamble.
+    ///
+    /// This hash value is used to determine when we need to refresh the
+    /// global code-completion cache after a rebuild of the precompiled preamble.
+    unsigned PreambleTopLevelHashValue = 0;
+  };
+
+  void initCache();
+  ASTUnitCache &getCache() { return ASTUnitCacheMap[getMainFileName()]; }
+  static std::recursive_mutex &getCacheMutex() { return CacheMutex; }
+
   /// Retrieve the mapping from formatted type names to unique type
   /// identifiers.
   llvm::StringMap<unsigned> &getCachedCompletionTypes() {
@@ -316,6 +344,9 @@ public:
   }
 
 private:
+  static std::recursive_mutex             CacheMutex;
+  static llvm::StringMap<ASTUnitCache>    ASTUnitCacheMap;
+
   /// Allocator used to store cached code completions.
   std::shared_ptr<GlobalCodeCompletionAllocator> CachedCompletionAllocator;
 
@@ -334,13 +365,6 @@ private:
   /// This hash value is used to determine when we need to refresh the
   /// global code-completion cache.
   unsigned CompletionCacheTopLevelHashValue = 0;
-
-  /// A string hash of the top-level declaration and macro definition
-  /// names processed the last time that we reparsed the precompiled preamble.
-  ///
-  /// This hash value is used to determine when we need to refresh the
-  /// global code-completion cache after a rebuild of the precompiled preamble.
-  unsigned PreambleTopLevelHashValue = 0;
 
   /// The current hash value for the top-level declaration and macro
   /// definition names
@@ -495,27 +519,31 @@ public:
   using top_level_iterator = std::vector<Decl *>::iterator;
 
   top_level_iterator top_level_begin() {
+    std::lock_guard<std::recursive_mutex> Lock(CacheMutex);
     assert(!isMainFileAST() && "Invalid call for AST based ASTUnit!");
-    if (!TopLevelDeclsInPreamble.empty())
+    if (!ASTUnitCacheMap[getMainFileName()].TopLevelDeclsInPreamble.empty())
       RealizeTopLevelDeclsFromPreamble();
     return TopLevelDecls.begin();
   }
 
   top_level_iterator top_level_end() {
+    std::lock_guard<std::recursive_mutex> Lock(CacheMutex);
     assert(!isMainFileAST() && "Invalid call for AST based ASTUnit!");
-    if (!TopLevelDeclsInPreamble.empty())
+    if (!ASTUnitCacheMap[getMainFileName()].TopLevelDeclsInPreamble.empty())
       RealizeTopLevelDeclsFromPreamble();
     return TopLevelDecls.end();
   }
 
   std::size_t top_level_size() const {
+    std::lock_guard<std::recursive_mutex> Lock(CacheMutex);
     assert(!isMainFileAST() && "Invalid call for AST based ASTUnit!");
-    return TopLevelDeclsInPreamble.size() + TopLevelDecls.size();
+    return ASTUnitCacheMap[getMainFileName()].TopLevelDeclsInPreamble.size() + TopLevelDecls.size();
   }
 
   bool top_level_empty() const {
+    std::lock_guard<std::recursive_mutex> Lock(CacheMutex);
     assert(!isMainFileAST() && "Invalid call for AST based ASTUnit!");
-    return TopLevelDeclsInPreamble.empty() && TopLevelDecls.empty();
+    return ASTUnitCacheMap[getMainFileName()].TopLevelDeclsInPreamble.empty() && TopLevelDecls.empty();
   }
 
   /// Add a new top-level declaration.
