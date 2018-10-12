@@ -23,6 +23,8 @@
 #include <optional>
 #include <system_error>
 
+#define KEEP_LINE_BREAKS_FOR_NON_EMPTY_LINES_BACKPORTED
+
 namespace llvm {
 namespace vfs {
 class FileSystem;
@@ -2608,6 +2610,16 @@ struct FormatStyle {
   bool JavaScriptWrapImports;
   // clang-format on
 
+  /// If true, no line breaks are optimized out (works only with ColumnLimit = 0)
+  /// \code
+  ///    true:                                  false:
+  ///    int foo(int a,                 vs.     int foo(int a, int b) {
+  ///            int b) {
+  ///      bar();                                 bar();
+  ///    }                                      }
+  /// \endcode
+  bool KeepLineBreaksForNonEmptyLines;
+
   /// If true, the empty line at the start of blocks is kept.
   /// \code
   ///    true:                                  false:
@@ -4219,6 +4231,7 @@ struct FormatStyle {
            JavaImportGroups == R.JavaImportGroups &&
            JavaScriptQuotes == R.JavaScriptQuotes &&
            JavaScriptWrapImports == R.JavaScriptWrapImports &&
+           KeepLineBreaksForNonEmptyLines == R.KeepLineBreaksForNonEmptyLines &&
            KeepEmptyLinesAtTheStartOfBlocks ==
                R.KeepEmptyLinesAtTheStartOfBlocks &&
            Language == R.Language &&

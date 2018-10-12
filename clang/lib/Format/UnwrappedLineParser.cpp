@@ -4530,6 +4530,8 @@ void UnwrappedLineParser::nextToken(int LevelDifference) {
     if (Keywords.isVerilogEnd(*FormatTok))
       FormatTok->Tok.setKind(tok::r_brace);
   }
+  if (FormatTok->NewlinesBefore && Style.KeepLineBreaksForNonEmptyLines)
+    FormatTok->MustBreakBefore = true;
 }
 
 void UnwrappedLineParser::distributeComments(
