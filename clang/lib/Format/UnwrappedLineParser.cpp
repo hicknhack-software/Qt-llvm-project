@@ -2942,6 +2942,8 @@ void UnwrappedLineParser::nextToken(int LevelDifference) {
   else
     readTokenWithJavaScriptASI();
   FormatTok->Previous = Previous;
+  if (FormatTok->NewlinesBefore && Style.KeepLineBreaksForNonEmptyLines)
+    FormatTok->MustBreakBefore = true;
 }
 
 void UnwrappedLineParser::distributeComments(

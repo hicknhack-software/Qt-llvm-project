@@ -732,7 +732,7 @@ public:
   LineFormatter(ContinuationIndenter *Indenter, WhitespaceManager *Whitespaces,
                 const FormatStyle &Style,
                 UnwrappedLineFormatter *BlockFormatter)
-      : Indenter(Indenter), Whitespaces(Whitespaces), Style(Style),
+      : Indenter(Indenter), Style(Style), Whitespaces(Whitespaces),
         BlockFormatter(BlockFormatter) {}
   virtual ~LineFormatter() {}
 
@@ -773,7 +773,8 @@ protected:
       // assert so that we can simply call this function for all tokens.
       return true;
 
-    if (NewLine) {
+    if (NewLine || (Previous.Children[0]->First->MustBreakBefore &&
+                    Style.KeepLineBreaksForNonEmptyLines)) {
       int AdditionalIndent = State.Stack.back().Indent -
                              Previous.Children[0]->Level * Style.IndentWidth;
 
@@ -819,10 +820,10 @@ protected:
   }
 
   ContinuationIndenter *Indenter;
+  const FormatStyle &Style;
 
 private:
   WhitespaceManager *Whitespaces;
-  const FormatStyle &Style;
   UnwrappedLineFormatter *BlockFormatter;
 };
 
@@ -845,7 +846,7 @@ public:
     while (State.NextToken) {
       bool Newline =
           Indenter->mustBreak(State) ||
-          (Indenter->canBreak(State) && State.NextToken->NewlinesBefore > 0);
+          (State.NextToken->NewlinesBefore > 0 && Indenter->canBreak(State));
       unsigned Penalty = 0;
       formatChildren(State, Newline, /*DryRun=*/false, Penalty);
       Indenter->addTokenToState(State, Newline, /*DryRun=*/false);
