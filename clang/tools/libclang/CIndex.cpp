@@ -3409,7 +3409,7 @@ clang_parseTranslationUnit_Impl(CXIndex CIdx, const char *source_filename,
     Diags(CompilerInstance::createDiagnostics(new DiagnosticOptions));
 
   if (options & CXTranslationUnit_KeepGoing)
-    Diags->setSuppressAfterFatalError(false);
+    Diags->setFatalsAsError(true);
 
   if (options & CXTranslationUnit_IgnoreNonErrorsFromIncludedFiles)
       Diags->setSuppressNonErrorsFromIncludedFiles(true);
