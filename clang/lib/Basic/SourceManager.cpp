@@ -1581,7 +1581,7 @@ FileID SourceManager::translateFile(const FileEntry *SourceFile) const {
     if (MainSLoc.isFile()) {
       const ContentCache *MainContentCache
         = MainSLoc.getFile().getContentCache();
-      if (!MainContentCache) {
+      if (!MainContentCache || !MainContentCache->OrigEntry) {
         // Can't do anything
       } else if (MainContentCache->OrigEntry == SourceFile) {
         FirstFID = MainFileID;
