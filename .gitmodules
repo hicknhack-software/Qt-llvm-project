@@ -1,0 +1,4 @@
+[submodule "clazy"]
+	path = clang-tools-extra/clazy
+	url = ../clazy
+	ignore = dirty
