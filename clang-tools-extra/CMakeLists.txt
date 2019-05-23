@@ -8,6 +8,8 @@ add_subdirectory(clang-reorder-fields)
 add_subdirectory(modularize)
 add_subdirectory(clang-tidy)
 add_subdirectory(clang-tidy-vs)
+set(CLAZY_BUILD_WITH_CLANG 1)
+add_subdirectory(clazy)
 
 add_subdirectory(change-namespace)
 add_subdirectory(clang-doc)
