@@ -191,6 +191,15 @@ public:
     return AllowEnablingAnalyzerAlphaCheckers;
   }
 
+  using DiagLevelAndFormatString = std::pair<DiagnosticIDs::Level, std::string>;
+  DiagLevelAndFormatString getDiagLevelAndFormatString(unsigned DiagnosticID,
+                                                       SourceLocation Loc) {
+    return DiagLevelAndFormatString(
+        static_cast<DiagnosticIDs::Level>(
+            DiagEngine->getDiagnosticLevel(DiagnosticID, Loc)),
+        DiagEngine->getDiagnosticIDs()->getDescription(DiagnosticID));
+  }
+
 private:
   // Writes to Stats.
   friend class ClangTidyDiagnosticConsumer;
@@ -226,6 +235,7 @@ private:
 class ClangTidyDiagnosticConsumer : public DiagnosticConsumer {
 public:
   ClangTidyDiagnosticConsumer(ClangTidyContext &Ctx,
+                              DiagnosticsEngine *ExternalDiagEngine = nullptr,
                               bool RemoveIncompatibleErrors = true);
 
   // FIXME: The concept of converting between FixItHints and Replacements is
@@ -250,7 +260,10 @@ private:
   void checkFilters(SourceLocation Location, const SourceManager& Sources);
   bool passesLineFilter(StringRef FileName, unsigned LineNumber) const;
 
+  void forwardDiagnostic(const Diagnostic &Info);
+
   ClangTidyContext &Context;
+  DiagnosticsEngine *ExternalDiagEngine;
   bool RemoveIncompatibleErrors;
   std::vector<ClangTidyError> Errors;
   std::unique_ptr<llvm::Regex> HeaderFilter;
