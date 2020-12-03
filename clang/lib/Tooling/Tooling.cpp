@@ -449,7 +449,14 @@ bool FrontendActionFactory::runInvocation(
   Compiler.setVirtualFileSystem(Files->getVirtualFileSystemPtr());
   Compiler.setFileManager(Files);
   Compiler.createDiagnostics(DiagConsumer, /*ShouldOwnClient=*/false);
-  Compiler.createSourceManager();
+
+#ifdef _WIN32
+  constexpr static bool UserFilesAreVolatile = true;
+#else
+  constexpr static bool UserFilesAreVolatile = false;
+#endif
+
+  Compiler.createSourceManager(UserFilesAreVolatile);
 
   // The FrontendAction can have lifetime requirements for Compiler or its
   // members, and we need to ensure it's deleted earlier than Compiler. So we
