@@ -390,11 +390,12 @@ void CompilerInstance::createFileManager() {
 
 // Source Manager
 
-void CompilerInstance::createSourceManager() {
+void CompilerInstance::createSourceManager(bool UserFilesAreVolatile) {
   assert(Diagnostics && "DiagnosticsEngine needed for creating SourceManager");
   assert(FileMgr && "FileManager needed for creating SourceManager");
   SourceMgr = llvm::makeIntrusiveRefCnt<SourceManager>(getDiagnostics(),
-                                                       getFileManager());
+                                                       getFileManager(),
+                                                       UserFilesAreVolatile);
 }
 
 // Initialize the remapping of files to alternative contents, e.g.,
