@@ -727,7 +727,7 @@ public:
   void createFileManager();
 
   /// Create the source manager and replace any existing one with it.
-  void createSourceManager();
+  void createSourceManager(bool UserFilesAreVolatile = false);
 
   /// Create the preprocessor, using the invocation, file, and source managers,
   /// and replace any existing one with it.
