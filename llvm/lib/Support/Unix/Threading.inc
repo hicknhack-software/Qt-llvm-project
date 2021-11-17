@@ -247,38 +247,34 @@ void llvm::get_thread_name(SmallVectorImpl<char> &Name) {
 }
 
 SetThreadPriorityResult llvm::set_thread_priority(ThreadPriority Priority) {
-#if defined(__linux__) && defined(SCHED_IDLE)
-  // Some *really* old glibcs are missing SCHED_IDLE.
+#if defined(__linux__) || defined(__APPLE__)
+  int policy;
+  sched_param priority;
+#if defined(SCHED_IDLE)
   // http://man7.org/linux/man-pages/man3/pthread_setschedparam.3.html
   // http://man7.org/linux/man-pages/man2/sched_setscheduler.2.html
-  sched_param priority;
-  // For each of the above policies, param->sched_priority must be 0.
-  priority.sched_priority = 0;
   // SCHED_IDLE    for running very low priority background jobs.
   // SCHED_OTHER   the standard round-robin time-sharing policy;
-  return !pthread_setschedparam(
-             pthread_self(),
-             Priority == ThreadPriority::Background ? SCHED_IDLE : SCHED_OTHER,
-             &priority)
-             ? SetThreadPriorityResult::SUCCESS
-             : SetThreadPriorityResult::FAILURE;
-#elif defined(__APPLE__)
-  // https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man2/getpriority.2.html
-  // When setting a thread into background state the scheduling priority is set
-  // to lowest value, disk and network IO are throttled. Network IO will be
-  // throttled for any sockets the thread opens after going into background
-  // state. Any previously opened sockets are not affected.
-
-  // https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man3/getiopolicy_np.3.html
-  // I/Os with THROTTLE policy are called THROTTLE I/Os. If a THROTTLE I/O
-  // request occurs within a small time window (usually a fraction of a second)
-  // of another NORMAL I/O request, the thread that issues the THROTTLE I/O is
-  // forced to sleep for a certain interval. This slows down the thread that
-  // issues the THROTTLE I/O so that NORMAL I/Os can utilize most of the disk
-  // I/O bandwidth.
-  return !setpriority(PRIO_DARWIN_THREAD, 0,
-                      Priority == ThreadPriority::Background ? PRIO_DARWIN_BG
-                                                             : 0)
+  policy = Priority == ThreadPriority::Background ? SCHED_IDLE : SCHED_OTHER;
+  // For each of the above policies, param->sched_priority must be 0.
+  priority.sched_priority = 0;
+#else
+  // Apple, and some *really* old glibcs are missing SCHED_IDLE.
+  if (pthread_getschedparam(pthread_self(), &policy, &priority) != 0) {
+    return SetThreadPriorityResult::FAILURE;
+  }
+  // Keep the policy. Set priority depending on ThreadPriority
+  if (Priority == ThreadPriority::Background) {
+    // low priority
+    priority.sched_priority = sched_get_priority_min(policy);
+  } else {
+    // middle priority
+    const int minPrio = sched_get_priority_min(policy);
+    const int maxPrio = sched_get_priority_max(policy);
+    priority.sched_priority = std::max(0, maxPrio - minPrio) / 2 + minPrio;
+  }
+#endif
+  return !pthread_setschedparam(pthread_self(), policy, &priority)
              ? SetThreadPriorityResult::SUCCESS
              : SetThreadPriorityResult::FAILURE;
 #endif
