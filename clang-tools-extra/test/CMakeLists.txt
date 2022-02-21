@@ -59,6 +59,7 @@ foreach(dep ${LLVM_UTILS_DEPS})
   endif()
 endforeach()
 
+#[[
 if (NOT WIN32 OR NOT LLVM_LINK_LLVM_DYLIB)
   llvm_add_library(
       CTTestTidyModule
@@ -75,6 +76,7 @@ if(TARGET CTTestTidyModule)
       )
     endif()
 endif()
+#]]
 
 add_lit_testsuite(check-clang-extra "Running clang-tools-extra/test"
    ${CMAKE_CURRENT_BINARY_DIR}
