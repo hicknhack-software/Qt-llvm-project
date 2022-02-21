@@ -67,6 +67,7 @@ foreach(dep ${LLVM_UTILS_DEPS})
   endif()
 endforeach()
 
+#[[
 if (NOT LLVM_INSTALL_TOOLCHAIN_ONLY)
   if (NOT WIN32 OR NOT LLVM_LINK_LLVM_DYLIB)
     llvm_add_library(
@@ -95,6 +96,7 @@ if (NOT LLVM_INSTALL_TOOLCHAIN_ONLY)
       endif()
   endif()
 endif()
+#]]
 
 add_lit_testsuite(check-clang-extra "Running clang-tools-extra/test"
    ${CMAKE_CURRENT_BINARY_DIR}
