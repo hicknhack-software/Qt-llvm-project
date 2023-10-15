@@ -71,6 +71,54 @@ if (LLDB_ENABLE_PYTHON)
       endif()
     endif()
   endforeach()
+
+  # For Python3.dll and Python3.zip deployment
+  find_package(Python3 3.8 COMPONENTS Development)
+
+  if (NOT ${Python3_Development_FOUND})
+    message(WARNING "PythonLibs (at least version 3.8) not found. qtcreatorcdbext will be built without Python support.")
+    return()
+  endif()
+
+  set(PythonRegex "^(.*)/(.*)/(python([0-9]+))${CMAKE_IMPORT_LIBRARY_SUFFIX}$")
+  if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+    set(PythonRegex "^(.*)/(.*)/(python([0-9]+)_d)${CMAKE_IMPORT_LIBRARY_SUFFIX}$")
+  endif()
+
+  foreach(lib IN LISTS Python3_LIBRARIES)
+    if (lib MATCHES ${PythonRegex})
+      if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+        set(PythonZipFileName "python${CMAKE_MATCH_4}_d.zip")
+      else()
+        set(PythonZipFileName "python${CMAKE_MATCH_4}.zip")
+      endif()
+      set(PythonNameWithVersion "${CMAKE_MATCH_3}")
+
+      set(PythonDll "${CMAKE_MATCH_1}/${PythonNameWithVersion}${CMAKE_SHARED_LIBRARY_SUFFIX}")
+      set(PythonExe "${CMAKE_MATCH_1}/python${CMAKE_EXECUTABLE_SUFFIX}")
+      set(PythonZip "${CMAKE_MATCH_1}/${PythonZipFileName}")
+
+      break()
+    endif()
+  endforeach()
+
+  if (NOT EXISTS "${PythonZip}" AND
+      NOT EXISTS "${CMAKE_CURRENT_BINARY_DIR}/${PythonZipFileName}")
+    include(CreatePythonXY)
+    create_python_xy("${PythonExe}" "${CMAKE_CURRENT_BINARY_DIR}/${PythonZipFileName}")
+  endif()
+
+  if (NOT EXISTS "${PythonZip}" AND
+      EXISTS "${CMAKE_CURRENT_BINARY_DIR}/${PythonZipFileName}")
+    set(PythonZip "${CMAKE_CURRENT_BINARY_DIR}/${PythonZipFileName}")
+  endif()
+
+  list(APPEND deployPythonFiles "${PythonDll}")
+  list(APPEND deployPythonFiles "${PythonZip}")
+
+  install(FILES ${deployPythonFiles}
+          DESTINATION ${CMAKE_INSTALL_BINDIR})
+
 endif ()
 
 if (LLDB_ENABLE_LUA)
