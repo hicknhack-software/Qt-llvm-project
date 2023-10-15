@@ -79,6 +79,7 @@ if (LLDB_ENABLE_PYTHON)
       endif()
     endif()
   endforeach()
+
   # Make sure lldb extension has "_d" suffix on Windows in Debug mode.
   if(WIN32 AND CMAKE_BUILD_TYPE STREQUAL Debug)
     string(SUBSTRING ${LLDB_PYTHON_EXT_SUFFIX} 0 2 FIRST_2_CHARS)
@@ -87,6 +88,62 @@ if (LLDB_ENABLE_PYTHON)
       set(LLDB_PYTHON_EXT_SUFFIX "_d${LLDB_PYTHON_EXT_SUFFIX}")
     endif()
   endif()
+
+  # For Python3.dll and Python3.zip deployment
+  find_package(Python3 3.8 COMPONENTS Interpreter Development)
+
+  if (NOT ${Python3_Development_FOUND})
+    message(WARNING "PythonLibs (at least version 3.8) not found. qtcreatorcdbext will be built without Python support.")
+    return()
+  endif()
+
+
+  set(PythonNameWithVersion "${CMAKE_SHARED_LIBRARY_PREFIX}python${Python3_VERSION_MAJOR}.${Python3_VERSION_MINOR}")
+  set(PythonVersion "${Python3_VERSION_MAJOR}${Python3_VERSION_MINOR}")
+  if (WIN32)
+    set(PythonNameWithVersion "python${Python3_VERSION_MAJOR}${Python3_VERSION_MINOR}")
+  endif()
+
+  set(PythonRegex "^(.*)/(.*)/${PythonNameWithVersion}\.[a-z]+$")
+  if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+    set(PythonRegex "^(.*)/(.*)/${PythonNameWithVersion}_d\.[a-z]+$")
+  endif()
+
+  foreach(lib IN LISTS Python3_LIBRARIES)
+    if (lib MATCHES ${PythonRegex})
+      if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+        set(PythonZipFileName "python${PythonVersion}_d.zip")
+      else()
+        set(PythonZipFileName "python${PythonVersion}.zip")
+      endif()
+
+      set(PythonDll "${lib}")
+      if (WIN32)
+        set(PythonDll "${CMAKE_MATCH_1}/${PythonNameWithVersion}${CMAKE_SHARED_LIBRARY_SUFFIX}")
+      endif()
+      set(PythonZip "${CMAKE_MATCH_1}/${PythonZipFileName}")
+
+      break()
+    endif()
+  endforeach()
+
+  if (NOT EXISTS "${PythonZip}" AND
+      NOT EXISTS "${CMAKE_CURRENT_BINARY_DIR}/${PythonZipFileName}")
+    include(CreatePythonXY)
+    create_python_xy("${Python3_EXECUTABLE}" "${Python3_STDLIB}" "${CMAKE_CURRENT_BINARY_DIR}/${PythonZipFileName}")
+  endif()
+
+  if (NOT EXISTS "${PythonZip}" AND
+      EXISTS "${CMAKE_CURRENT_BINARY_DIR}/${PythonZipFileName}")
+    set(PythonZip "${CMAKE_CURRENT_BINARY_DIR}/${PythonZipFileName}")
+  endif()
+
+  list(APPEND deployPythonFiles "${PythonDll}")
+  list(APPEND deployPythonFiles "${PythonZip}")
+
+  install(FILES ${deployPythonFiles}
+          DESTINATION ${CMAKE_INSTALL_BINDIR})
+
 endif ()
 
 if (LLDB_ENABLE_LUA)
