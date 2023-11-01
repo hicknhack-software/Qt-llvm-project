@@ -80,9 +80,9 @@ if (LLDB_ENABLE_PYTHON)
     return()
   endif()
 
-  set(PythonRegex "^(.*)/(.*)/(python([0-9]+))${CMAKE_IMPORT_LIBRARY_SUFFIX}$")
+  set(PythonRegex "^(.*)/(.*)/(python([0-9]+))\.[a-z]+$")
   if (CMAKE_BUILD_TYPE STREQUAL "Debug")
-    set(PythonRegex "^(.*)/(.*)/(python([0-9]+)_d)${CMAKE_IMPORT_LIBRARY_SUFFIX}$")
+    set(PythonRegex "^(.*)/(.*)/(python([0-9]+)_d)\.[a-z]+$")
   endif()
 
   foreach(lib IN LISTS Python3_LIBRARIES)
