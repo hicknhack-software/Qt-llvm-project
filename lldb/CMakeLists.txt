@@ -73,29 +73,37 @@ if (LLDB_ENABLE_PYTHON)
   endforeach()
 
   # For Python3.dll and Python3.zip deployment
-  find_package(Python3 3.8 COMPONENTS Development)
+  find_package(Python3 3.8 COMPONENTS Interpreter Development)
 
   if (NOT ${Python3_Development_FOUND})
     message(WARNING "PythonLibs (at least version 3.8) not found. qtcreatorcdbext will be built without Python support.")
     return()
   endif()
 
-  set(PythonRegex "^(.*)/(.*)/(python([0-9]+))\.[a-z]+$")
+
+  set(PythonNameWithVersion "${CMAKE_SHARED_LIBRARY_PREFIX}python${Python3_VERSION_MAJOR}.${Python3_VERSION_MINOR}")
+  set(PythonVersion "${Python3_VERSION_MAJOR}${Python3_VERSION_MINOR}")
+  if (WIN32)
+    set(PythonNameWithVersion "python${Python3_VERSION_MAJOR}${Python3_VERSION_MINOR}")
+  endif()
+
+  set(PythonRegex "^(.*)/(.*)/${PythonNameWithVersion}\.[a-z]+$")
   if (CMAKE_BUILD_TYPE STREQUAL "Debug")
-    set(PythonRegex "^(.*)/(.*)/(python([0-9]+)_d)\.[a-z]+$")
+    set(PythonRegex "^(.*)/(.*)/${PythonNameWithVersion}_d\.[a-z]+$")
   endif()
 
   foreach(lib IN LISTS Python3_LIBRARIES)
     if (lib MATCHES ${PythonRegex})
       if (CMAKE_BUILD_TYPE STREQUAL "Debug")
-        set(PythonZipFileName "python${CMAKE_MATCH_4}_d.zip")
+        set(PythonZipFileName "python${PythonVersion}_d.zip")
       else()
-        set(PythonZipFileName "python${CMAKE_MATCH_4}.zip")
+        set(PythonZipFileName "python${PythonVersion}.zip")
       endif()
-      set(PythonNameWithVersion "${CMAKE_MATCH_3}")
 
-      set(PythonDll "${CMAKE_MATCH_1}/${PythonNameWithVersion}${CMAKE_SHARED_LIBRARY_SUFFIX}")
-      set(PythonExe "${CMAKE_MATCH_1}/python${CMAKE_EXECUTABLE_SUFFIX}")
+      set(PythonDll "${lib}")
+      if (WIN32)
+        set(PythonDll "${CMAKE_MATCH_1}/${PythonNameWithVersion}${CMAKE_SHARED_LIBRARY_SUFFIX}")
+      endif()
       set(PythonZip "${CMAKE_MATCH_1}/${PythonZipFileName}")
 
       break()
@@ -105,7 +113,7 @@ if (LLDB_ENABLE_PYTHON)
   if (NOT EXISTS "${PythonZip}" AND
       NOT EXISTS "${CMAKE_CURRENT_BINARY_DIR}/${PythonZipFileName}")
     include(CreatePythonXY)
-    create_python_xy("${PythonExe}" "${CMAKE_CURRENT_BINARY_DIR}/${PythonZipFileName}")
+    create_python_xy("${Python3_EXECUTABLE}" "${Python3_STDLIB}" "${CMAKE_CURRENT_BINARY_DIR}/${PythonZipFileName}")
   endif()
 
   if (NOT EXISTS "${PythonZip}" AND

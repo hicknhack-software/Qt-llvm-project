@@ -1,8 +1,6 @@
 # create_python_xy function will precompile the Python/lib/*.py files
 # and create a zip file containing all the pyc files
-function(create_python_xy PythonExe PythonZipFilePath)
-  get_filename_component(python_lib_dir "${PythonExe}" DIRECTORY)
-  get_filename_component(python_lib_dir "${python_lib_dir}/Lib" ABSOLUTE)
+function(create_python_xy PythonExe python_lib_dir PythonZipFilePath)
   foreach(dir collections encodings importlib json urllib re)
       file(COPY ${python_lib_dir}/${dir}
           DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/python-lib
