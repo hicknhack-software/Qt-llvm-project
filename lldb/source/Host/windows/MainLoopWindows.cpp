@@ -58,7 +58,7 @@ public:
       // Keep trying to cancel ReadFile() until the thread exits.
       do {
         CancelIoEx(m_handle, /*lpOverlapped=*/NULL);
-      } while (WaitForSingleObject(m_monitor_thread.native_handle(), 1) ==
+      } while (WaitForSingleObject((HANDLE)m_monitor_thread.native_handle(), 1) ==
                WAIT_TIMEOUT);
       m_monitor_thread.join();
     }
