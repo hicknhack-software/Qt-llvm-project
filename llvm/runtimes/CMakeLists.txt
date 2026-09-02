@@ -284,6 +284,9 @@ function(runtime_default_target)
   set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${LLVM_BINARY_DIR}/runtimes/Components.cmake)
 
   foreach(runtime_name ${RUNTIME_NAMES})
+    if (TARGET ${runtime_name})
+      continue()
+    endif()
     list(APPEND extra_targets
       ${runtime_name}
       install-${runtime_name}
