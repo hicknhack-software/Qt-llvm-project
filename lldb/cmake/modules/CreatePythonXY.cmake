@@ -32,7 +32,7 @@ function(create_python_xy PythonExe python_lib_dir PythonZipFilePath)
     cProfile.py          poplib.py        typing.py
     crypt.py             pprint.py        uu.py
     csv.py               profile.py
-    dataclasses.py       pstats.py        wave.py
+                         pstats.py        wave.py
                          pty.py           webbrowser.py
     decimal.py           pyclbr.py        xdrlib.py
     difflib.py           py_compile.py    zipapp.py
