@@ -16,12 +16,12 @@ function(create_python_xy PythonExe python_lib_dir PythonZipFilePath)
     asyncore.py          lzma.py          string.py
     bdb.py               mailbox.py       stringprep.py
     binhex.py            mailcap.py       sunau.py
-    bisect.py            mimetypes.py     symbol.py
+                         mimetypes.py     symbol.py
     bz2.py               modulefinder.py  symtable.py
     calendar.py          netrc.py         tabnanny.py
     cgi.py               nntplib.py       tarfile.py
     cgitb.py             nturl2path.py    telnetlib.py
-    chunk.py             numbers.py       tempfile.py
+    chunk.py             numbers.py
     cmd.py               optparse.py
                          pathlib.py       this.py
                          pdb.py           timeit.py
@@ -38,7 +38,7 @@ function(create_python_xy PythonExe python_lib_dir PythonZipFilePath)
     difflib.py           py_compile.py    zipapp.py
     doctest.py           queue.py         zipfile.py
     dummy_threading.py   quopri.py        zipimport.py
-    filecmp.py           random.py        _compat_pickle.py
+    filecmp.py                            _compat_pickle.py
     fileinput.py         rlcompleter.py   _compression.py
     formatter.py         runpy.py         _dummy_thread.py
     fractions.py         sched.py         _markupbase.py
@@ -46,7 +46,7 @@ function(create_python_xy PythonExe python_lib_dir PythonZipFilePath)
     getopt.py            selectors.py     _pydecimal.py
     getpass.py           shelve.py        _pyio.py
     gettext.py           shlex.py         _py_abc.py
-    gzip.py              shutil.py        _strptime.py
+    gzip.py                               _strptime.py
     hashlib.py           smtpd.py         _threading_local.py
     hmac.py              smtplib.py
     imaplib.py           sndhdr.py        __phello__.foo.py
