@@ -1,0 +1,62 @@
+name: Mirror Qt libclang
+
+on:
+  schedule:
+    - cron: '23 7 * * 5'
+  workflow_dispatch:
+    inputs:
+      versions:
+        description: 'Comma-separated versions (empty discovers all >= 23.0.0)'
+        type: string
+        default: ''
+      dry_run:
+        description: 'Discover missing releases without publishing'
+        type: boolean
+        default: false
+  push:
+    branches: [mirror-automation]
+    paths: ['.github/mirror/**', '.github/workflows/mirror-libclang.yml']
+  pull_request:
+    paths: ['.github/mirror/**', '.github/workflows/mirror-libclang.yml']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: qt-libclang-mirror
+  cancel-in-progress: false
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          persist-credentials: false
+      - run: python3 -m unittest discover -s .github/mirror -v
+
+  mirror:
+    needs: test
+    if: >-
+      github.repository == 'hicknhack-software/Qt-llvm-project' &&
+      (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          persist-credentials: false
+      - name: Discover, verify, and mirror Qt releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MIRROR_SSH_KEY: ${{ secrets.MIRROR_SSH_KEY }}
+          MIRROR_VERSIONS: ${{ inputs.versions }}
+          MIRROR_DRY_RUN: ${{ inputs.dry_run }}
+        run: python3 .github/mirror/mirror_libclang.py
+      - name: Keep the Friday schedule active during quiet periods
+        if: github.event_name == 'schedule'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 .github/mirror/mirror_libclang.py --keepalive
