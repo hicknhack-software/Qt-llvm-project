@@ -183,6 +183,8 @@ def mirror_branch(github, version, sha, directory):
         subprocess.run(["git", "init", "--bare", str(repo)], check=True)
         git("remote", "add", "mirror", mirror_url)
         git("remote", "add", "qt", UPSTREAM)
+        git("config", "remote.mirror.promisor", "true")
+        git("config", "remote.mirror.partialclonefilter", "blob:none")
         # Share the mirror's ancestry without checking out LLVM or downloading its blobs.
         refs = github.request("/git/matching-refs/heads/release_")
         candidates = []
@@ -192,7 +194,7 @@ def mirror_branch(github, version, sha, directory):
                 candidates.append((version_key(match[1]), item["ref"]))
         if candidates:
             git("fetch", "--filter=blob:none", "--no-tags", "mirror", max(candidates)[1])
-    git("fetch", "--filter=blob:none", "--no-tags", "qt", f"refs/heads/{branch}")
+    git("fetch", "--no-tags", "qt", f"refs/heads/{branch}")
     fetched = subprocess.check_output(
         ["git", "-C", str(repo), "rev-parse", "FETCH_HEAD"], text=True
     ).strip()

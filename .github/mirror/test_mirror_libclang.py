@@ -1,6 +1,8 @@
 import hashlib
 from datetime import datetime, timedelta, timezone
+import os
 from pathlib import Path
+import subprocess
 import tempfile
 import unittest
 from unittest.mock import Mock, patch
@@ -183,6 +185,39 @@ class KeepaliveTests(unittest.TestCase):
         github.request.side_effect = [{"default_branch": "release_23.1.0-based"}]
         with self.assertRaisesRegex(ValueError, "only update"):
             mirror.keepalive(github)
+
+
+class GitIntegrationTests(unittest.TestCase):
+    def test_missing_source_branch_is_fetched_and_pushed_at_the_exact_commit(self):
+        with tempfile.TemporaryDirectory() as scratch:
+            directory = Path(scratch)
+            source = directory / "upstream"
+            destination = directory / "mirror.git"
+            source.mkdir()
+
+            def git(*args):
+                return subprocess.check_output(["git", *map(str, args)], text=True).strip()
+
+            git("init", "--initial-branch=release_23.1.0-based", source)
+            (source / "file.txt").write_text("source commit\n", encoding="ascii")
+            git("-C", source, "add", "file.txt")
+            git("-C", source, "-c", "user.name=Mirror test", "-c", "user.email=test@example.com",
+                "-c", "commit.gpgsign=false", "-c", "core.hooksPath=", "commit", "-m", "Source")
+            sha = git("-C", source, "rev-parse", "HEAD")
+            git("init", "--bare", destination)
+            config = directory / "gitconfig"
+            config.write_text(
+                f'[url "{source.as_uri()}"]\n\tinsteadOf = {mirror.UPSTREAM}\n'
+                f'[url "{destination.as_uri()}"]\n'
+                f'\tinsteadOf = https://github.com/{mirror.REPOSITORY}.git\n', encoding="utf-8")
+            github = Mock(token="test-token")
+            github.optional.return_value = None
+            github.request.return_value = []
+            with patch.dict(os.environ, {"GIT_CONFIG_GLOBAL": str(config),
+                                         "GITHUB_ACTIONS": "false", "MIRROR_SSH_KEY": ""}):
+                mirror.mirror_branch(github, VERSION, sha, directory)
+            self.assertEqual(git("-C", destination, "rev-parse", "refs/heads/release_23.1.0-based"),
+                             sha)
 
 
 if __name__ == "__main__":
