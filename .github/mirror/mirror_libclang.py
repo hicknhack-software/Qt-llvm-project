@@ -110,6 +110,22 @@ class GitHub:
                 return assets
             page += 1
 
+    def release(self, tag):
+        published = self.optional("/releases/tags/" + quote(tag))
+        if published:
+            return published
+        page = 1
+        while True:
+            batch = self.request(f"/releases?per_page=100&page={page}")
+            matches = [release for release in batch if release["tag_name"] == tag]
+            if len(matches) > 1:
+                raise ValueError(f"Multiple draft releases found for {tag}")
+            if matches:
+                return matches[0]
+            if len(batch) < 100:
+                return None
+            page += 1
+
     def upload(self, release, path):
         url = release["upload_url"].split("{")[0] + "?name=" + quote(path.name)
         headers = {
@@ -255,13 +271,15 @@ def mirror_release(github, item, directory, dry_run):
     checksums = parse_manifest(data, item["version"])
     names = [*checksums, item["manifest"]]
     digest = hashlib.sha256(data).hexdigest()
-    release = github.optional("/releases/tags/" + quote(item["tag"]))
+    release = github.release(item["tag"])
     assets = github.assets(release) if release else []
     branch = f"release_{item['version']}-based"
     sha = source_sha(branch)
     tag = github.optional("/git/ref/tags/" + quote(item["tag"]))
     if tag and tag["object"]["sha"] != sha:
         raise ValueError(f"Release tag does not point to the upstream commit: {item['tag']}")
+    if release and release["draft"] and release["target_commitish"] != sha:
+        raise ValueError(f"Draft release does not target the upstream commit: {item['tag']}")
     if release and complete(release, assets, names, digest):
         print(f"Already complete: {item['tag']}", flush=True)
         if not dry_run:

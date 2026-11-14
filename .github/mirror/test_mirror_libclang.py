@@ -93,11 +93,24 @@ class TransferTests(unittest.TestCase):
             git.assert_not_called()
 
 
+class GitHubTests(unittest.TestCase):
+    def test_draft_recovery_uses_paginated_release_listing(self):
+        github = mirror.GitHub("test-token")
+        draft = {"tag_name": ITEM["tag"], "draft": True}
+        with patch.object(github, "optional", return_value=None), \
+                patch.object(github, "request", side_effect=[
+                    [{"tag_name": "another-release"}] * 100, [draft]
+                ]) as request:
+            self.assertEqual(github.release(ITEM["tag"]), draft)
+        self.assertEqual(request.call_args_list[-1].args[0], "/releases?per_page=100&page=2")
+
+
 class PublishingTests(unittest.TestCase):
     def setUp(self):
         self.github = Mock()
-        self.github.optional.side_effect = [None, None, None]
-        self.release = {"id": 1, "draft": True, "upload_url": "unused"}
+        self.github.release.return_value = None
+        self.github.optional.return_value = None
+        self.release = {"id": 1, "draft": True, "upload_url": "unused", "target_commitish": SHA}
         self.github.request.return_value = self.release
         self.github.assets.return_value = [asset(NAME), asset(MANIFEST, DATA)]
 
@@ -136,7 +149,8 @@ class PublishingTests(unittest.TestCase):
 
     def test_completed_release_does_not_transfer_archives(self):
         release = dict(self.release, draft=False)
-        self.github.optional.side_effect = [release, {"object": {"sha": SHA}}]
+        self.github.release.return_value = release
+        self.github.optional.return_value = {"object": {"sha": SHA}}
         with tempfile.TemporaryDirectory() as scratch, \
                 patch.object(mirror, "read_url", return_value=DATA), \
                 patch.object(mirror, "source_sha", return_value=SHA), \
@@ -146,6 +160,12 @@ class PublishingTests(unittest.TestCase):
                 self.github, ITEM, Path(scratch), False), "complete")
         download.assert_not_called()
         self.github.request.assert_not_called()
+
+    def test_interrupted_draft_is_resumed_without_creating_a_new_release(self):
+        self.github.release.return_value = self.release
+        self.assertEqual(self.run_release([DATA, DATA]), "published")
+        self.assertEqual(self.github.request.call_count, 1)
+        self.assertEqual(self.github.request.call_args.args[0], "/releases/1")
 
     def test_dry_run_does_not_push_create_or_upload(self):
         with tempfile.TemporaryDirectory() as scratch, \
